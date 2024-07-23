@@ -1,0 +1,47 @@
+import os
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from PIL import Image
+
+
+model_path = 'quantized_recycle_model.tflite'
+
+interpreter = tf.lite.Interpreter(model_path=model_path)
+interpreter.allocate_tensors()
+
+print('Model loaded.')
+
+labels = {0: 'NA', 1: 'bottle', 2: 'can'}
+
+def get_result(image_path):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    img = load_img(image_path, target_size=(input_details[0]['shape'][1], input_details[0]['shape'][2]))
+    x = img_to_array(img)
+    x = x.astype('float32') / 255.
+    x = np.expand_dims(x, axis=0)
+
+
+    interpreter.set_tensor(input_details[0]['index'], x)
+
+    interpreter.invoke()
+
+    predictions = interpreter.get_tensor(output_details[0]['index'])[0]
+    return predictions
+
+def predict(image_path):
+    predictions = get_result(image_path)
+    predicted_label = labels[np.argmax(predictions)]
+    return predicted_label
+
+if __name__ == '__main__':
+    # نحط مكان الصوره
+    image_path = 'path_to_your_image.jpg'
+    
+    if not os.path.exists(image_path):
+        print(f"Image path '{image_path}' does not exist.")
+    else:
+        prediction = predict(image_path)
+        print(f"Prediction: {prediction}")
